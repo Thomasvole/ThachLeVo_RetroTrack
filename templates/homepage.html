@@ -2,8 +2,14 @@
 {% block title %}Home | RetroTrack{% endblock %}
 {% block content %}
 <div class="welcome-container">
-    <h1>Hi {{ user.first_name }} {{ user.last_name }}, </h1>
-    <h2>Welcome to RetroTrack!</h2>
-    <p>Optimizing Routes, Reducing Costs, Delivering Efficiency.</p>
+    {% if user %}
+        <h1>Hi {{ user.first_name }} {{ user.last_name }},</h1>
+        <h2>Welcome to RetroTrack!</h2>
+    {% else %}
+        <h1>Welcome to RetroTrack!</h1>
+        <p>Optimizing Routes, Reducing Costs, Delivering Efficiency.</p>
+        <p><a class="btn btn-primary" href="{{ url_for('login') }}">Login</a>
+        or <a class="btn btn-secondary" href="{{ url_for('register') }}">Register</a></p>
+    {% endif %}
 </div>
 {% endblock %}

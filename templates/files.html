@@ -11,16 +11,36 @@
                 <th>Type</th>
                 <th>Size (KB)</th>
                 <th>Uploaded Date</th>
+                <th>Analysis</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for file in files %}
+            {% set ext = file.filename.split('.')[-1].lower() %}
             <tr>
                 <td>{{ file.filename }}</td>
-                <td>{{ file.filename.split('.')[-1] | upper }}</td>
+                <td>{{ ext.upper() }}</td>
                 <td>{{ "%.2f"|format(file.size) }}</td>
                 <td>{{ file.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>
+                    {% if ext in ['xls', 'xlsx'] %}
+                        <!-- Show specialized analysis links for Excel -->
+                        <a class="btn btn-sm btn-info mb-1"
+                           href="{{ url_for('view_summary', file_id=file.id) }}">View Summary</a>
+                        <a class="btn btn-sm btn-info mb-1"
+                           href="{{ url_for('view_details', file_id=file.id) }}">View Details</a>
+                        <a class="btn btn-sm btn-warning mb-1"
+                           href="{{ url_for('analyze_route', file_id=file.id) }}">Analyze Route</a>
+                        <a class="btn btn-sm btn-success mb-1"
+                           href="{{ url_for('analyze_cost', file_id=file.id) }}">Analyze Cost</a>
+                        <!-- Link to view all raw ExcelRow data -->
+                        <a class="btn btn-sm btn-secondary"
+                           href="{{ url_for('view_all_excel_data', file_id=file.id) }}">All Excel Data</a>
+                    {% else %}
+                        <span class="text-muted">N/A for {{ ext.upper() }}</span>
+                    {% endif %}
+                </td>
                 <td>
                     <form action="{{ url_for('delete_file', file_id=file.id) }}" method="POST" style="display: inline;">
                         <button type="submit" class="btn btn-danger btn-sm">Delete</button>

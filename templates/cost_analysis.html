@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+    <h2>Cost Analysis for File ID: {{ file_id }}</h2>
+
+    <!-- Table for precise cost data -->
+    <h4>Cost Summary Table</h4>
+    {% if summary_rows %}
+    <table class="table table-bordered mt-3">
+        <thead>
+            <tr>
+                <th>Row Labels</th>
+                <th>CTH</th>
+                <th>HCM</th>
+                <th>HNI</th>
+                <th>Grand Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in summary_rows %}
+            <tr>
+                <td>{{ row.row_labels }}</td>
+                <td>{{ row.cth if row.cth else 0 }}</td>
+                <td>{{ row.hcm if row.hcm else 0 }}</td>
+                <td>{{ row.hni if row.hni else 0 }}</td>
+                <td>{{ row.grand_total if row.grand_total else 0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No summary data found for this file.</p>
+    {% endif %}
+
+    <!-- Bar chart for visualization -->
+    {% if summary_rows %}
+    <h4 class="mt-5">Cost Visualization (CTH, HCM, HNI, Grand Total)</h4>
+    <canvas id="costChart" width="600" height="400"></canvas>
+    {% endif %}
+</div>
+
+<!-- Include Chart.js from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    {% if summary_rows %}
+    let ctx = document.getElementById('costChart').getContext('2d');
+    let labels = {{ labels }};
+    let cthData = {{ cth_data }};
+    let hcmData = {{ hcm_data }};
+    let hniData = {{ hni_data }};
+    let grandData = {{ grand_data }};
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'CTH',
+                    data: cthData,
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'HCM',
+                    data: hcmData,
+                    backgroundColor: 'rgba(255, 159, 64, 0.7)',
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'HNI',
+                    data: hniData,
+                    backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Grand Total',
+                    data: grandData,
+                    backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

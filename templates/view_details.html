@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Detail Data for File ID: {{ file_id }}</h2>
+    <p class="text-muted">Below is the list of entries from "BANG KE CHI TIET". Rows with more than 2 days delay are highlighted.</p>
+    {% if rows %}
+    <table class="table table-bordered mt-3">
+        <thead>
+            <tr>
+                <th>NGÀY ĐH</th>
+                <th>NGÀY CHI</th>
+                <th>Delay (Days)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr {% if row.delay_days and row.delay_days > 2 %} class="table-danger" {% endif %}>
+                <td>{{ row.ngay_dh.strftime('%Y-%m-%d') if row.ngay_dh else '' }}</td>
+                <td>{{ row.ngay_chi.strftime('%Y-%m-%d') if row.ngay_chi else '' }}</td>
+                <td>{{ row.delay_days if row.delay_days is not none else '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No details found for this file.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Route Suggestions for File ID: {{ file_id }}</h2>
+    <p class="text-muted">Any delays above 2 days will show an optimized route and potential time savings.</p>
+    {% if route_report %}
+    <table class="table table-bordered mt-3">
+        <thead>
+            <tr>
+                <th>NGÀY ĐH</th>
+                <th>NGÀY CHI</th>
+                <th>Delay (Days)</th>
+                <th>Current Route</th>
+                <th>Optimized Route</th>
+                <th>Time Saving (Hours)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in route_report %}
+            <tr>
+                <td>{{ row.ngay_dh.strftime('%Y-%m-%d') if row.ngay_dh else '' }}</td>
+                <td>{{ row.ngay_chi.strftime('%Y-%m-%d') if row.ngay_chi else '' }}</td>
+                <td>{{ row.delay_days if row.delay_days is not none else '' }}</td>
+                <td>{{ row.current_route }}</td>
+                <td>{{ row.optimized_route }}</td>
+                <td>{{ row.time_saving_hours }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No detail data available to generate route suggestions.</p>
+    {% endif %}
+</div>
+{% endblock %}
