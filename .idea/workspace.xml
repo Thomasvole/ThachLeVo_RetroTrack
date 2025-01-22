@@ -4,24 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="14fba24f-6ef9-4357-967e-843375c28720" name="Changes" comment="CS IA /RetroTrack/ SC1 &amp; 2 (final draft) 1/12/2025">
-      <change afterPath="$PROJECT_DIR$/templates/cost_analysis.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/templates/route_analysis.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/templates/view_all_excel.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/templates/view_details.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/templates/view_summary.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/instance/site.db" beforeDir="false" afterPath="$PROJECT_DIR$/instance/site.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/static/style.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/edit_profile.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/edit_profile.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/files.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/files.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/homepage.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/homepage.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/login.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/login.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/profile.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/profile.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/register.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/register.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/upload.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/upload.html" afterDir="false" />
-    </list>
+    <list default="true" id="14fba24f-6ef9-4357-967e-843375c28720" name="Changes" comment="CS IA /RetroTrack/ SC1 &amp; 2 (final draft with modifications) 1/22/2025" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -137,7 +120,7 @@
       <workItem from="1736948303582" duration="1837000" />
       <workItem from="1737120968995" duration="3126000" />
       <workItem from="1737387816918" duration="19209000" />
-      <workItem from="1737553048733" duration="892000" />
+      <workItem from="1737553048733" duration="1646000" />
     </task>
     <task id="LOCAL-00001" summary="CS IA /RetroTrack/ SC1 &amp; 2 (initial draft) 1/12/2025">
       <option name="closed" value="true" />
@@ -171,7 +154,23 @@
       <option name="project" value="LOCAL" />
       <updated>1737411521718</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="CS IA /RetroTrack/ SC1 &amp; 2 (final draft with modifications) 1/22/2025">
+      <option name="closed" value="true" />
+      <created>1737554101148</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1737554101148</updated>
+    </task>
+    <task id="LOCAL-00006" summary="CS IA /RetroTrack/ SC1 &amp; 2 (final draft with modifications) 1/22/2025">
+      <option name="closed" value="true" />
+      <created>1737554126092</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1737554126092</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -180,7 +179,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="CS IA /RetroTrack/ SC1 &amp; 2 (initial draft) 1/12/2025" />
     <MESSAGE value="CS IA /RetroTrack/ SC1 &amp; 2 (final draft) 1/12/2025" />
-    <option name="LAST_COMMIT_MESSAGE" value="CS IA /RetroTrack/ SC1 &amp; 2 (final draft) 1/12/2025" />
+    <MESSAGE value="CS IA /RetroTrack/ SC1 &amp; 2 (final draft with modifications) 1/22/2025" />
+    <option name="LAST_COMMIT_MESSAGE" value="CS IA /RetroTrack/ SC1 &amp; 2 (final draft with modifications) 1/22/2025" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ThachLeVo_RetroTrack$FlaskProject.coverage" NAME="FlaskProject Coverage Results" MODIFIED="1737553126006" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
