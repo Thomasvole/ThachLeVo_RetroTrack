@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container mt-4">
+        <h1>Inefficient Routes</h1>
+        {% if routes %}
+            <table class="table table-bordered">
+                <thead>
+                <tr>
+                    <th>File ID</th>
+                    <th>Base Address</th>
+                    <th>Shipping Address</th>
+                    <th>Starting Time</th>
+                    <th>Expected Delivery Time</th>
+                    <th>Actual Delivery Time</th>
+                    <th>Delay (hours)</th>
+                    <th>Expected Cost (VND)</th>
+                    <th>Actual Cost (VND)</th>
+                    <th>Max Cost (VND/hr)</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for r in routes %}
+                    <tr>
+                        <td>{{ r.file_id }}</td>
+                        <td>{{ r.base_address }}</td>
+                        <td>{{ r.shipping_address }}</td>
+                        <td>{{ r.starting_time }}</td>
+                        <td>{{ r.expected_delivery_time }}</td>
+                        <td>{{ r.actual_delivery_time }}</td>
+                        <td>{{ r.delay_hours }}</td>
+                        <td>{{ r.expected_delivery_cost }}</td>
+                        <td>{{ r.actual_delivery_cost }}</td>
+                        <td>{{ r.max_delivery_cost }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No inefficient routes found.</p>
+        {% endif %}
+    </div>
+{% endblock %}
