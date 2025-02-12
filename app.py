@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 import pandas as pd
+import requests  # For external API calls
 from flask import Flask, render_template, redirect, url_for, flash, session, request
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
@@ -19,6 +20,8 @@ app.config['SECRET_KEY'] = 'a_very_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'doc', 'docx', 'xls', 'xlsx'}
+# Add your Geoapify API key here
+app.config['GEOAPIFY_API_KEY'] = "27181d3f8ddc4ff5ac1258c1c0d2eee7"
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -134,10 +137,8 @@ def parse_excel(file_path):
       - Actual Delivery Cost (VND)
       - Max Delivery Cost (VND/hr)
 
-    Converts "Starting Time" to a datetime and attempts to convert the expected and actual
-    delivery time values to floats. If both are numeric, delay = actual - expected;
-    otherwise, delay is computed using datetime subtraction.
-    Only rows with delay > 24 hours are kept.
+    Assumes that the delivery time values are numeric (in hours).
+    Computes delay = Actual - Expected, and only keeps rows with delay > 24 hours.
     Returns a dictionary with key "inefficient_routes".
     """
     required_cols = [
@@ -159,31 +160,18 @@ def parse_excel(file_path):
             if not set(required_cols).issubset(df.columns):
                 continue
             for _, row in df.iterrows():
-                # Skip if any required value is missing.
+                # Skip rows with any missing required values.
                 if any(pd.isnull(row[col]) for col in required_cols):
                     continue
-                try:
-                    st = pd.to_datetime(row["Starting Time"], errors='coerce')
-                except Exception:
-                    continue
-                if pd.isnull(st):
-                    continue
-                # Try converting expected and actual delivery times to float.
+                # "Starting Time" is already in the desired format.
+                st = row["Starting Time"]
+                # Convert expected and actual delivery times to float.
                 exp_val = to_float(row["Expected Delivery Time (hours)"])
                 act_val = to_float(row["Actual Delivery Time (hours)"])
                 if exp_val is None or act_val is None:
-                    # Fallback: try converting to datetime.
-                    exp_dt_tmp = pd.to_datetime(row["Expected Delivery Time (hours)"], errors='coerce')
-                    act_dt_tmp = pd.to_datetime(row["Actual Delivery Time (hours)"], errors='coerce')
-                    if pd.isnull(exp_dt_tmp) or pd.isnull(act_dt_tmp):
-                        continue
-                    diff = (act_dt_tmp - exp_dt_tmp).total_seconds() / 3600.0
-                    exp_dt, act_dt = exp_dt_tmp, act_dt_tmp
-                else:
-                    diff = act_val - exp_val
-                    base = st
-                    exp_dt = base + pd.to_timedelta(exp_val, unit='h')
-                    act_dt = base + pd.to_timedelta(act_val, unit='h')
+                    continue
+                # Compute delay as a numeric difference.
+                diff = act_val - exp_val
                 if diff > 24:
                     ec = to_float(row["Expected Delivery Cost (VND)"])
                     ac = to_float(row["Actual Delivery Cost (VND)"])
@@ -194,21 +182,76 @@ def parse_excel(file_path):
                         "base_address": str(row["Base Address"]),
                         "shipping_address": str(row["Shipping Address"]),
                         "starting_time": st,
-                        "expected_delivery_time": exp_dt,
-                        "actual_delivery_time": act_dt,
+                        "expected_delivery_time": exp_val,  # kept as numeric value (for Excel parsing)
+                        "actual_delivery_time": act_val,  # kept as numeric value (for Excel parsing)
                         "expected_delivery_cost": ec,
                         "actual_delivery_cost": ac,
                         "max_delivery_cost": mc,
                         "delay_hours": diff  # computed delay in hours
                     }
                     result["inefficient_routes"].append(route)
-        # Debug print to console
         print("Parsed Inefficient Routes:")
         print(json.dumps(result, default=str, indent=4))
         return result
     except Exception as e:
         print(f"Error processing Excel file: {e}")
         return result
+
+
+# ------------------------------
+# New Helper Functions for Geoapify
+# ------------------------------
+
+def get_coordinates(address):
+    """
+    Returns the (latitude, longitude) of the given address using Geoapify's geocoding API.
+    """
+    try:
+        geocode_url = (
+            f"https://api.geoapify.com/v1/geocode/search?text={address}"
+            f"&apiKey={app.config['GEOAPIFY_API_KEY']}"
+        )
+        response = requests.get(geocode_url)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('features'):
+                # Geoapify returns coordinates as [lon, lat]; we return (lat, lon)
+                coords = data['features'][0]['geometry']['coordinates']
+                return coords[1], coords[0]
+    except Exception as e:
+        print("Error geocoding address", address, e)
+    return None
+
+
+def get_optimized_route_time(base_address, shipping_address):
+    """
+    Returns the optimized route travel time (in hours) between base_address and shipping_address.
+    If the API call fails or no route is found, returns None.
+    """
+    start_coords = get_coordinates(base_address)
+    end_coords = get_coordinates(shipping_address)
+    if not start_coords or not end_coords:
+        return None
+
+    routing_url = (
+        f"https://api.geoapify.com/v1/routing?"
+        f"waypoints={start_coords[0]},{start_coords[1]}|{end_coords[0]},{end_coords[1]}"
+        f"&mode=drive&apiKey={app.config['GEOAPIFY_API_KEY']}"
+    )
+    try:
+        response = requests.get(routing_url)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('features'):
+                # Assume the first feature contains the optimized route information.
+                props = data['features'][0].get('properties', {})
+                travel_time_seconds = props.get('time')
+                if travel_time_seconds is not None:
+                    # Convert seconds to hours.
+                    return travel_time_seconds / 3600.0
+    except Exception as e:
+        print("Error fetching optimized route from Geoapify", e)
+    return None
 
 
 #########################################################################
@@ -421,6 +464,8 @@ def show_inefficient():
     """
     Displays all inefficient routes from the database.
     The delay is computed on the fly (actual_delivery_time - expected_delivery_time).
+    Additionally, the optimized delivery time (via Geoapify) and time saved (actual travel duration minus optimized time)
+    are appended as additional columns.
     """
     routes = InefficientRoute.query.all()
     print("Number of inefficient routes found:", len(routes))
@@ -430,6 +475,24 @@ def show_inefficient():
             delay = (r.actual_delivery_time - r.expected_delivery_time).total_seconds() / 3600.0
         except Exception:
             delay = "N/A"
+        # Compute actual travel duration (in hours) from starting time to actual delivery time.
+        try:
+            actual_duration = (r.actual_delivery_time - r.starting_time).total_seconds() / 3600.0
+        except Exception:
+            actual_duration = None
+
+        # Get optimized route time via Geoapify (in hours)
+        optimized_time = get_optimized_route_time(r.base_address, r.shipping_address)
+        if optimized_time is None:
+            optimized_delivery_time = "N/A"
+            time_saved = "N/A"
+        else:
+            optimized_delivery_time = round(optimized_time, 2)
+            if actual_duration is not None:
+                time_saved = round(actual_duration - optimized_time, 2)
+            else:
+                time_saved = "N/A"
+
         ineffs.append({
             "file_id": r.file_id,
             "base_address": r.base_address,
@@ -440,7 +503,9 @@ def show_inefficient():
             "expected_delivery_cost": r.expected_delivery_cost,
             "actual_delivery_cost": r.actual_delivery_cost,
             "max_delivery_cost": r.max_delivery_cost,
-            "delay_hours": round(delay, 2) if isinstance(delay, (int, float)) else delay
+            "delay_hours": round(delay, 2) if isinstance(delay, (int, float)) else delay,
+            "optimized_delivery_time": optimized_delivery_time,
+            "time_saved": time_saved
         })
     return render_template("inefficient.html", routes=ineffs)
 

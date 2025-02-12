@@ -4,25 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="14fba24f-6ef9-4357-967e-843375c28720" name="Changes" comment="CS IA /RetroTrack/ SC1 &amp; 2 (final draft with modifications) 1/22/2025">
-      <change afterPath="$PROJECT_DIR$/qodana.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/templates/inefficient.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/e3052646-bed0-426b-b008-10a048d3c45d.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/e3052646-bed0-426b-b008-10a048d3c45d.xml" afterDir="false" />
+    <list default="true" id="14fba24f-6ef9-4357-967e-843375c28720" name="Changes" comment="CS IA /RetroTrack/ SC3 (initial draft) 2/11/2025">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/instance/site.db" beforeDir="false" afterPath="$PROJECT_DIR$/instance/site.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/base.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/cost_analysis.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/files.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/files.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/route_analysis.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/upload.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/upload.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/view_all_excel.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/view_details.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/view_summary.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/20240327_HR_124_DNTT-Luong-T3-1.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/20241129_DNTT_SC_133_DE-NGHI-THANH-TOAN-THANG-11.2024-LAN-2.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/ib_phys_dc_ESQ_A.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/templates/inefficient.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/inefficient.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -90,26 +75,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "DefaultHtmlFileTemplate": "HTML File",
-    "Flask server.Flask (app.py).executor": "Run",
-    "Flask server.FlaskProject.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "master",
-    "ignore.virus.scanning.warn.message": "true",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "ml.llm.AIAssistantPromptsLibrary",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
+    &quot;Flask server.Flask (app.py).executor&quot;: &quot;Run&quot;,
+    &quot;Flask server.FlaskProject.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="Flask server.Flask (app.py)">
     <configuration name="Flask (app.py)" type="Python.FlaskServer" temporary="true" nameIsGenerated="true">
       <module name="ThachLeVo_RetroTrack" />
@@ -179,7 +164,9 @@
       <workItem from="1739298880077" duration="334000" />
       <workItem from="1739299227155" duration="1091000" />
       <workItem from="1739300333904" duration="506000" />
-      <workItem from="1739305240666" duration="5949000" />
+      <workItem from="1739305240666" duration="10807000" />
+      <workItem from="1739339573799" duration="2322000" />
+      <workItem from="1739358966523" duration="5648000" />
     </task>
     <task id="LOCAL-00001" summary="CS IA /RetroTrack/ SC1 &amp; 2 (initial draft) 1/12/2025">
       <option name="closed" value="true" />
@@ -237,7 +224,23 @@
       <option name="project" value="LOCAL" />
       <updated>1737558754850</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="CS IA /RetroTrack/ SC3 (initial draft) 2/11/2025">
+      <option name="closed" value="true" />
+      <created>1739327461050</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1739327461050</updated>
+    </task>
+    <task id="LOCAL-00009" summary="CS IA /RetroTrack/ SC3 (initial draft) 2/11/2025">
+      <option name="closed" value="true" />
+      <created>1739327602761</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1739327602761</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -264,11 +267,12 @@
     <MESSAGE value="CS IA /RetroTrack/ SC1 &amp; 2 (initial draft) 1/12/2025" />
     <MESSAGE value="CS IA /RetroTrack/ SC1 &amp; 2 (final draft) 1/12/2025" />
     <MESSAGE value="CS IA /RetroTrack/ SC1 &amp; 2 (final draft with modifications) 1/22/2025" />
-    <option name="LAST_COMMIT_MESSAGE" value="CS IA /RetroTrack/ SC1 &amp; 2 (final draft with modifications) 1/22/2025" />
+    <MESSAGE value="CS IA /RetroTrack/ SC3 (initial draft) 2/11/2025" />
+    <option name="LAST_COMMIT_MESSAGE" value="CS IA /RetroTrack/ SC3 (initial draft) 2/11/2025" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ThachLeVo_RetroTrack$FlaskProject.coverage" NAME="FlaskProject Coverage Results" MODIFIED="1737553126006" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ThachLeVo_RetroTrack$Flask__app_py_.coverage" NAME="Flask (app.py) Coverage Results" MODIFIED="1739326979061" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/ThachLeVo_RetroTrack$Flask__app_py_.coverage" NAME="Flask (app.py) Coverage Results" MODIFIED="1739368872740" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/FlaskProject$FlaskProject.coverage" NAME="FlaskProject Coverage Results" MODIFIED="1736698897161" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>
