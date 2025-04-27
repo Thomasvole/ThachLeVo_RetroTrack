@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>Cost Analysis</h2>
+
+    {% if files %}
+        <h4>Select a file for analysis:</h4>
+        <div class="list-group">
+            {% for file in files %}
+                <a href="{{ url_for('cost_analysis', file_id=file.id) }}"
+                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    {{ file.filename }}
+                    <span class="badge bg-primary rounded-pill">
+            {{ file.upload_date.strftime('%Y-%m-%d') }}
+          </span>
+                </a>
+            {% endfor %}
+        </div>
+
+    {% elif cost_data %}
+        <h4>
+            Cost Analysis for “{{ selected_file.filename }}”
+            <small class="text-muted">(File ID {{ selected_file.id }})</small>
+        </h4>
+
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>Route ID</th>
+                <th>Base Address</th>
+                <th>Shipping Address</th>
+                <th>Actual Duration (hrs)</th>
+                <th>Optimized Time (hrs)</th>
+                <th>Max Cost (VND/hr)</th>
+                <th>Optimized Cost (VND)</th>
+                <th>Actual Cost (VND)</th>
+                <th>Cost Saved (VND)</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in cost_data %}
+                <tr>
+                    <td>{{ row.route_id }}</td>
+                    <td>{{ row.base_address }}</td>
+                    <td>{{ row.shipping_address }}</td>
+                    <td>{{ row.actual_duration }}</td>
+                    <td>{{ row.optimized_time }}</td>
+                    <td>{{ row.max_delivery_cost }}</td>
+                    <td>{{ row.optimized_cost }}</td>
+                    <td>{{ row.actual_cost }}</td>
+                    <td>{{ row.cost_saved }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        {% if chart_url %}
+            <div class="my-4">
+                <h4>Cost Saved Visualization</h4>
+                <img src="{{ chart_url }}" alt="Cost Saved per Route" class="img-fluid">
+            </div>
+        {% endif %}
+
+        <a href="{{ url_for('cost_analysis') }}" class="btn btn-secondary">
+            Back to File Selection
+        </a>
+
+    {% else %}
+        <p>No cost analysis data available for this file.</p>
+        <a href="{{ url_for('cost_analysis') }}" class="btn btn-secondary">
+            Back to File Selection
+        </a>
+    {% endif %}
+{% endblock %}

@@ -1,7 +1,10 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from urllib.parse import quote_plus
 
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import pandas as pd
 import requests  # For external API calls
 from flask import Flask, render_template, redirect, url_for, flash, session, request
@@ -20,8 +23,8 @@ app.config['SECRET_KEY'] = 'a_very_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'doc', 'docx', 'xls', 'xlsx'}
-# Add your Geoapify API key here
-app.config['GEOAPIFY_API_KEY'] = "27181d3f8ddc4ff5ac1258c1c0d2eee7"
+# Use your Geoapify API key (ensure the key is active and not restricted)
+app.config['GEOAPIFY_API_KEY'] = "380c58ce52a64969a8f5a6e5ea6106da"
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -65,6 +68,8 @@ class InefficientRoute(db.Model):
       - Expected Delivery Time, Actual Delivery Time,
       - Expected Delivery Cost, Actual Delivery Cost, Max Delivery Cost.
     (Delay is computed on the fly when displaying.)
+    Additionally, we now store the optimized delivery time (in hours) and time saved (in hours)
+    so that these do not need to be recalculated on every page load.
     """
     id = db.Column(db.Integer, primary_key=True)
     file_id = db.Column(db.Integer, db.ForeignKey('file.id'), nullable=False)
@@ -76,9 +81,11 @@ class InefficientRoute(db.Model):
     expected_delivery_cost = db.Column(db.Float, nullable=False)
     actual_delivery_cost = db.Column(db.Float, nullable=False)
     max_delivery_cost = db.Column(db.Float, nullable=False)
+    # New columns for caching computed optimized route info:
+    optimized_delivery_time = db.Column(db.Float, nullable=True)
+    time_saved = db.Column(db.Float, nullable=True)
 
     def __repr__(self):
-        # Compute delay on the fly.
         delay = (self.actual_delivery_time - self.expected_delivery_time).total_seconds() / 3600.0
         return f"InefficientRoute(FileID={self.file_id}, BaseAddress={self.base_address}, Delay={round(delay, 2)}h)"
 
@@ -126,19 +133,13 @@ def to_float(value):
 def parse_excel(file_path):
     """
     Extracts inefficient route data from an Excel file.
-
-    Expected columns (exact match):
-      - Base Address
-      - Shipping Address
-      - Starting Time
-      - Expected Delivery Time (hours)
-      - Actual Delivery Time (hours)
-      - Expected Delivery Cost (VND)
-      - Actual Delivery Cost (VND)
+    Expected columns:
+      - Base Address, Shipping Address, Starting Time,
+      - Expected Delivery Time (hours), Actual Delivery Time (hours),
+      - Expected Delivery Cost (VND), Actual Delivery Cost (VND),
       - Max Delivery Cost (VND/hr)
-
-    Assumes that the delivery time values are numeric (in hours).
-    Computes delay = Actual - Expected, and only keeps rows with delay > 24 hours.
+    Converts numeric hours to datetime objects by adding them to the Starting Time.
+    Keeps rows where delay (act_hours - exp_hours) > 24.
     Returns a dictionary with key "inefficient_routes".
     """
     required_cols = [
@@ -160,19 +161,17 @@ def parse_excel(file_path):
             if not set(required_cols).issubset(df.columns):
                 continue
             for _, row in df.iterrows():
-                # Skip rows with any missing required values.
                 if any(pd.isnull(row[col]) for col in required_cols):
                     continue
-                # "Starting Time" is already in the desired format.
                 st = row["Starting Time"]
-                # Convert expected and actual delivery times to float.
-                exp_val = to_float(row["Expected Delivery Time (hours)"])
-                act_val = to_float(row["Actual Delivery Time (hours)"])
-                if exp_val is None or act_val is None:
+                exp_hours = to_float(row["Expected Delivery Time (hours)"])
+                act_hours = to_float(row["Actual Delivery Time (hours)"])
+                if exp_hours is None or act_hours is None:
                     continue
-                # Compute delay as a numeric difference.
-                diff = act_val - exp_val
+                diff = act_hours - exp_hours
                 if diff > 24:
+                    expected_dt = st + timedelta(hours=exp_hours)
+                    actual_dt = st + timedelta(hours=act_hours)
                     ec = to_float(row["Expected Delivery Cost (VND)"])
                     ac = to_float(row["Actual Delivery Cost (VND)"])
                     mc = to_float(row["Max Delivery Cost (VND/hr)"])
@@ -182,16 +181,16 @@ def parse_excel(file_path):
                         "base_address": str(row["Base Address"]),
                         "shipping_address": str(row["Shipping Address"]),
                         "starting_time": st,
-                        "expected_delivery_time": exp_val,  # kept as numeric value (for Excel parsing)
-                        "actual_delivery_time": act_val,  # kept as numeric value (for Excel parsing)
+                        "expected_delivery_time": expected_dt,
+                        "actual_delivery_time": actual_dt,
                         "expected_delivery_cost": ec,
                         "actual_delivery_cost": ac,
                         "max_delivery_cost": mc,
-                        "delay_hours": diff  # computed delay in hours
+                        "delay_hours": diff
                     }
                     result["inefficient_routes"].append(route)
         print("Parsed Inefficient Routes:")
-        print(json.dumps(result, default=str, indent=4))
+        print(json.dumps(result, default=str, indent=4, ensure_ascii=False))
         return result
     except Exception as e:
         print(f"Error processing Excel file: {e}")
@@ -199,25 +198,32 @@ def parse_excel(file_path):
 
 
 # ------------------------------
-# New Helper Functions for Geoapify
+# Geoapify Helper Functions
 # ------------------------------
-
 def get_coordinates(address):
     """
-    Returns the (latitude, longitude) of the given address using Geoapify's geocoding API.
+    Returns the (latitude, longitude) of the given address using Geoapify's Forward Geocoding API.
+    Uses URL encoding, sets language to Vietnamese, and requests JSON output.
     """
     try:
+        encoded_address = quote_plus(address)
         geocode_url = (
-            f"https://api.geoapify.com/v1/geocode/search?text={address}"
-            f"&apiKey={app.config['GEOAPIFY_API_KEY']}"
+            f"https://api.geoapify.com/v1/geocode/search?text={encoded_address}"
+            f"&apiKey={app.config['GEOAPIFY_API_KEY']}&lang=vi&limit=1&format=json"
         )
-        response = requests.get(geocode_url)
+        print("Geocode URL:", geocode_url)
+        headers = {"Accept": "application/json", "User-Agent": "FlaskGeoapifyClient/1.0"}
+        response = requests.get(geocode_url, headers=headers)
         if response.status_code == 200:
             data = response.json()
-            if data.get('features'):
-                # Geoapify returns coordinates as [lon, lat]; we return (lat, lon)
-                coords = data['features'][0]['geometry']['coordinates']
-                return coords[1], coords[0]
+            print("Geocode response data:", data)
+            if data.get("results") and len(data["results"]) > 0:
+                result = data["results"][0]
+                return result.get("lat"), result.get("lon")
+            else:
+                print("No geocoding results found for address:", address)
+        else:
+            print("Geocode request failed with status:", response.status_code)
     except Exception as e:
         print("Error geocoding address", address, e)
     return None
@@ -225,33 +231,63 @@ def get_coordinates(address):
 
 def get_optimized_route_time(base_address, shipping_address):
     """
-    Returns the optimized route travel time (in hours) between base_address and shipping_address.
-    If the API call fails or no route is found, returns None.
+    Returns the optimized route travel time (in hours) between base_address and shipping_address using Geoapify's Routing API.
+    Uses the coordinates retrieved via the Forward Geocoding API.
     """
     start_coords = get_coordinates(base_address)
     end_coords = get_coordinates(shipping_address)
     if not start_coords or not end_coords:
+        print("Failed to get coordinates for either address.")
         return None
 
     routing_url = (
         f"https://api.geoapify.com/v1/routing?"
         f"waypoints={start_coords[0]},{start_coords[1]}|{end_coords[0]},{end_coords[1]}"
-        f"&mode=drive&apiKey={app.config['GEOAPIFY_API_KEY']}"
+        f"&mode=drive&type=short&units=metric&apiKey={app.config['GEOAPIFY_API_KEY']}&limit=1&format=json"
     )
+    print("Routing URL:", routing_url)
+    headers = {"Accept": "application/json", "User-Agent": "FlaskGeoapifyClient/1.0"}
     try:
-        response = requests.get(routing_url)
+        response = requests.get(routing_url, headers=headers)
         if response.status_code == 200:
             data = response.json()
-            if data.get('features'):
-                # Assume the first feature contains the optimized route information.
-                props = data['features'][0].get('properties', {})
-                travel_time_seconds = props.get('time')
+            print("Routing response data:", data)
+            if data.get("results") and len(data["results"]) > 0:
+                result = data["results"][0]
+                travel_time_seconds = result.get("time")
                 if travel_time_seconds is not None:
-                    # Convert seconds to hours.
                     return travel_time_seconds / 3600.0
+            else:
+                print("No routing results returned.")
+        else:
+            print("Routing request failed with status:", response.status_code)
     except Exception as e:
         print("Error fetching optimized route from Geoapify", e)
     return None
+
+
+# --- New helper function to update cached optimized info ---
+def update_cached_routes(routes):
+    """
+    For each route in the given list that does not have cached optimized_delivery_time or time_saved,
+    compute these values using the Routing API and update the database.
+    """
+    updated = False
+    for r in routes:
+        if r.optimized_delivery_time is None or r.time_saved is None:
+            optimized_time = get_optimized_route_time(r.base_address, r.shipping_address)
+            if optimized_time is not None:
+                actual_duration = (r.actual_delivery_time - r.starting_time).total_seconds() / 3600.0
+                if actual_duration > optimized_time:
+                    r.optimized_delivery_time = round(optimized_time, 2)
+                    r.time_saved = round(actual_duration - optimized_time, 2)
+                    updated = True
+    if updated:
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print("Error updating cached optimized info:", e)
 
 
 #########################################################################
@@ -266,7 +302,6 @@ def inject_now():
 # Routes
 #########################################################################
 @app.route('/')
-@app.route('/home')
 def home():
     user = None
     if 'user_id' in session:
@@ -279,10 +314,12 @@ def register():
     form = RegistrationForm()
     if form.validate_on_submit():
         hashed = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        usr = User(first_name=form.first_name.data,
-                   last_name=form.last_name.data,
-                   email=form.email.data,
-                   password=hashed)
+        usr = User(
+            first_name=form.first_name.data,
+            last_name=form.last_name.data,
+            email=form.email.data,
+            password=hashed
+        )
         db.session.add(usr)
         db.session.commit()
         flash("Account created. Please log in.", "success")
@@ -349,23 +386,28 @@ def upload():
     if 'user_id' not in session:
         flash("Login required to upload files.", "danger")
         return redirect(url_for('login'))
+
     if request.method == 'POST':
         if request.content_length and request.content_length > 10 * 1024 * 1024:
             flash("File too large (>10MB).", "danger")
             return redirect(request.url)
+
         file = request.files.get('file')
         if not file or file.filename == '':
             flash("No file selected.", "danger")
             return redirect(request.url)
+
         if allowed_file(file.filename):
             fname = secure_filename(file.filename)
             fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
             file.save(fpath)
             size_kb = os.path.getsize(fpath) / 1024.0
+
             if size_kb > 10240:
                 os.remove(fpath)
                 flash("File too large (>10MB).", "danger")
                 return redirect(request.url)
+
             try:
                 new_file = File(filename=fname, size=size_kb, user_id=session['user_id'])
                 db.session.add(new_file)
@@ -392,6 +434,7 @@ def upload():
                         else:
                             delay = (route["actual_delivery_time"] - route[
                                 "expected_delivery_time"]).total_seconds() / 3600.0
+
                     if delay > 24:
                         ir = InefficientRoute(
                             file_id=new_file.id,
@@ -423,10 +466,12 @@ def upload():
             finally:
                 if os.path.exists(fpath):
                     os.remove(fpath)
+
             return redirect(url_for('files'))
         else:
             flash("Invalid file extension.", "danger")
             return redirect(request.url)
+
     return render_template('upload.html')
 
 
@@ -444,70 +489,254 @@ def delete_file(file_id):
     if 'user_id' not in session:
         flash("Login required.", "danger")
         return redirect(url_for('login'))
+
     this_file = File.query.get_or_404(file_id)
+
     if this_file.user_id != session['user_id']:
         flash("Not authorized.", "danger")
         return redirect(url_for('files'))
-    # Delete associated inefficient routes.
-    InefficientRoute.query.filter_by(file_id=file_id).delete()
+
     fpath = os.path.join(app.config['UPLOAD_FOLDER'], this_file.filename)
-    if os.path.exists(fpath):
-        os.remove(fpath)
-    db.session.delete(this_file)
-    db.session.commit()
-    flash("File and related data deleted.", "success")
+    try:
+        if os.path.exists(fpath):
+            os.remove(fpath)
+            flash("File successfully deleted.", "success")
+        else:
+            flash("File not found on server.", "warning")
+    except Exception as e:
+        flash(f"Error deleting file: {str(e)}", "danger")
+        return redirect(url_for('files'))
+
+    try:
+        InefficientRoute.query.filter_by(file_id=file_id).delete()
+        db.session.delete(this_file)
+        db.session.commit()
+        flash("File and related data deleted from the database.", "success")
+    except Exception as e:
+        flash(f"Error deleting file record: {str(e)}", "danger")
+
     return redirect(url_for('files'))
 
 
-@app.route('/inefficient')
-def show_inefficient():
-    """
-    Displays all inefficient routes from the database.
-    The delay is computed on the fly (actual_delivery_time - expected_delivery_time).
-    Additionally, the optimized delivery time (via Geoapify) and time saved (actual travel duration minus optimized time)
-    are appended as additional columns.
-    """
-    routes = InefficientRoute.query.all()
-    print("Number of inefficient routes found:", len(routes))
-    ineffs = []
-    for r in routes:
+# --- Updated Inefficient Routes (List & Detail) Route ---
+@app.route('/inefficient', defaults={'file_id': None}, methods=['GET', 'POST'])
+@app.route('/inefficient/<int:file_id>', methods=['GET', 'POST'])
+def show_inefficient(file_id):
+    if 'user_id' not in session:
+        flash("Login required.", "danger")
+        return redirect(url_for('login'))
+
+    # If POST: update the inefficient routes (and recalc optimized info)
+    if request.method == 'POST':
+        new_routes_count = 0
+        user_files = File.query.filter_by(user_id=session['user_id']).all()
+        for file in user_files:
+            if file.parsed_data:
+                try:
+                    data = json.loads(file.parsed_data)
+                    for route in data.get("inefficient_routes", []):
+                        existing = InefficientRoute.query.filter_by(
+                            file_id=file.id,
+                            base_address=route["base_address"],
+                            starting_time=route["starting_time"]
+                        ).first()
+                        if existing:
+                            continue
+
+                        delay = route.get("delay_hours")
+                        if delay is None:
+                            ev = to_float(route["expected_delivery_time"])
+                            av = to_float(route["actual_delivery_time"])
+                            if ev is not None and av is not None:
+                                delay = av - ev
+                            else:
+                                continue
+
+                        if delay > 24:
+                            if isinstance(route["starting_time"], str):
+                                try:
+                                    start_time = datetime.fromisoformat(route["starting_time"])
+                                except Exception:
+                                    start_time = datetime.strptime(route["starting_time"], "%Y-%m-%d %H:%M:%S")
+                            else:
+                                start_time = route["starting_time"]
+
+                            if isinstance(route["expected_delivery_time"], float):
+                                expected_time = start_time + timedelta(hours=route["expected_delivery_time"])
+                            elif isinstance(route["expected_delivery_time"], str):
+                                try:
+                                    expected_time = datetime.fromisoformat(route["expected_delivery_time"])
+                                except Exception:
+                                    expected_time = datetime.strptime(route["expected_delivery_time"],
+                                                                      "%Y-%m-%d %H:%M:%S")
+                            else:
+                                expected_time = route["expected_delivery_time"]
+
+                            if isinstance(route["actual_delivery_time"], float):
+                                actual_time = start_time + timedelta(hours=route["actual_delivery_time"])
+                            elif isinstance(route["actual_delivery_time"], str):
+                                try:
+                                    actual_time = datetime.fromisoformat(route["actual_delivery_time"])
+                                except Exception:
+                                    actual_time = datetime.strptime(route["actual_delivery_time"], "%Y-%m-%d %H:%M:%S")
+                            else:
+                                actual_time = route["actual_delivery_time"]
+
+                            new_ir = InefficientRoute(
+                                file_id=file.id,
+                                base_address=route["base_address"],
+                                shipping_address=route["shipping_address"],
+                                starting_time=start_time,
+                                expected_delivery_time=expected_time,
+                                actual_delivery_time=actual_time,
+                                expected_delivery_cost=to_float(route["expected_delivery_cost"]),
+                                actual_delivery_cost=to_float(route["actual_delivery_cost"]),
+                                max_delivery_cost=to_float(route["max_delivery_cost"])
+                            )
+                            db.session.add(new_ir)
+                            new_routes_count += 1
+                except Exception as e:
+                    print("Error processing file", file.filename, e)
+
         try:
-            delay = (r.actual_delivery_time - r.expected_delivery_time).total_seconds() / 3600.0
-        except Exception:
-            delay = "N/A"
-        # Compute actual travel duration (in hours) from starting time to actual delivery time.
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flash("An error occurred while saving to the database.", "danger")
+            print("Commit error:", e)
+            return redirect(url_for('show_inefficient'))
+
+        if new_routes_count > 0:
+            flash(f"{new_routes_count} inefficient route(s) identified and saved into the database.", "success")
+        else:
+            flash("No new inefficient routes found.", "info")
+        return redirect(url_for('show_inefficient'))
+
+    # If file_id is not provided, show a list of files that have inefficient routes.
+    if file_id is None:
+        file_ids = [fid for (fid,) in db.session.query(InefficientRoute.file_id).distinct().all()]
+        files_list = File.query.filter(File.id.in_(file_ids), File.user_id == session['user_id']).all()
+        return render_template("inefficient.html", files=files_list, routes=None, selected_file=None)
+    else:
+        routes = InefficientRoute.query.filter_by(file_id=file_id).all()
+        update_cached_routes(routes)
+
+        ineff_data = []
+        for r in routes:
+            try:
+                delay = (r.actual_delivery_time - r.expected_delivery_time).total_seconds() / 3600.0
+            except Exception:
+                delay = "N/A"
+            ineff_data.append({
+                "file_id": r.file_id,
+                "base_address": r.base_address,
+                "shipping_address": r.shipping_address,
+                "starting_time": r.starting_time.strftime("%Y-%m-%d %H:%M") if isinstance(r.starting_time,
+                                                                                          datetime) else r.starting_time,
+                "expected_delivery_time": r.expected_delivery_time.strftime("%Y-%m-%d %H:%M") if isinstance(
+                    r.expected_delivery_time, datetime) else r.expected_delivery_time,
+                "actual_delivery_time": r.actual_delivery_time.strftime("%Y-%m-%d %H:%M") if isinstance(
+                    r.actual_delivery_time, datetime) else r.actual_delivery_time,
+                "expected_delivery_cost": r.expected_delivery_cost,
+                "actual_delivery_cost": r.actual_delivery_cost,
+                "max_delivery_cost": r.max_delivery_cost,
+                "delay_hours": round(delay, 2) if isinstance(delay, (int, float)) else delay,
+                "optimized_delivery_time": r.optimized_delivery_time if r.optimized_delivery_time is not None else "N/A",
+                "time_saved": r.time_saved if r.time_saved is not None else "N/A"
+            })
+
+        selected_file = File.query.get(file_id)
+        return render_template("inefficient.html", files=None, routes=ineff_data, selected_file=selected_file)
+
+
+def generate_cost_waste_chart(cost_data, file_id):
+    """
+    Generates and saves a cleaner bar chart of cost_saved for each route.
+    """
+    plot_dir = os.path.join('static', 'plots')
+    os.makedirs(plot_dir, exist_ok=True)
+
+    labels = [str(item['route_id']) for item in cost_data]
+    waste_millions = [item['cost_saved'] / 1_000_000 for item in cost_data]
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.bar(labels, waste_millions)
+    ax.set_xlabel('Route ID')
+    ax.set_ylabel('Cost Saved (Million VND)')
+    ax.set_title('Cost Saved per Inefficient Route')
+
+    # Rotate and space x-ticks nicely
+    ax.set_xticks(range(0, len(labels), 5))  # show every 5th label
+    ax.set_xticklabels([labels[i] for i in range(0, len(labels), 5)], rotation=45, ha='right')
+    ax.yaxis.set_major_formatter(mticker.FormatStrFormatter('%.1f'))
+
+    plt.tight_layout()
+    plot_filename = f"cost_waste_{file_id}.png"
+    plot_path = os.path.join(plot_dir, plot_filename)
+    plt.savefig(plot_path)
+    plt.close(fig)
+
+    return f"/static/plots/{plot_filename}"
+
+
+@app.route('/cost_analysis', defaults={'file_id': None})
+@app.route('/cost_analysis/<int:file_id>')
+def cost_analysis(file_id):
+    if 'user_id' not in session:
+        flash("Login required.", "danger")
+        return redirect(url_for('login'))
+
+    # 1) No file selected yet: list all files
+    if file_id is None:
+        files_list = File.query.filter_by(user_id=session['user_id']).all()
+        return render_template("cost_analysis.html",
+                               files=files_list,
+                               cost_data=None,
+                               chart_url=None,
+                               selected_file=None)
+
+    # 2) Build cost_data for the selected file
+    routes = InefficientRoute.query.filter_by(file_id=file_id).all()
+    update_cached_routes(routes)
+    cost_data = []
+    for r in routes:
         try:
             actual_duration = (r.actual_delivery_time - r.starting_time).total_seconds() / 3600.0
         except Exception:
-            actual_duration = None
+            continue
+        if r.optimized_delivery_time is None:
+            continue
 
-        # Get optimized route time via Geoapify (in hours)
-        optimized_time = get_optimized_route_time(r.base_address, r.shipping_address)
-        if optimized_time is None:
-            optimized_delivery_time = "N/A"
-            time_saved = "N/A"
-        else:
-            optimized_delivery_time = round(optimized_time, 2)
-            if actual_duration is not None:
-                time_saved = round(actual_duration - optimized_time, 2)
-            else:
-                time_saved = "N/A"
+        optimized_time = r.optimized_delivery_time
+        optimized_cost = r.max_delivery_cost * optimized_time
+        actual_cost = r.max_delivery_cost * actual_duration
+        cost_saved = actual_cost - optimized_cost
 
-        ineffs.append({
-            "file_id": r.file_id,
+        cost_data.append({
+            "route_id": r.id,
             "base_address": r.base_address,
             "shipping_address": r.shipping_address,
-            "starting_time": r.starting_time,
-            "expected_delivery_time": r.expected_delivery_time,
-            "actual_delivery_time": r.actual_delivery_time,
-            "expected_delivery_cost": r.expected_delivery_cost,
-            "actual_delivery_cost": r.actual_delivery_cost,
+            "actual_duration": round(actual_duration, 2),
+            "optimized_time": round(optimized_time, 2),
             "max_delivery_cost": r.max_delivery_cost,
-            "delay_hours": round(delay, 2) if isinstance(delay, (int, float)) else delay,
-            "optimized_delivery_time": optimized_delivery_time,
-            "time_saved": time_saved
+            "optimized_cost": round(optimized_cost, 2),
+            "actual_cost": round(actual_cost, 2),
+            "cost_saved": round(cost_saved, 2)
         })
-    return render_template("inefficient.html", routes=ineffs)
+
+    # 3) Generate chart if data exists
+    chart_url = None
+    if cost_data:
+        chart_url = generate_cost_waste_chart(cost_data, file_id)
+
+    # 4) Fetch the File record so template can show name + id
+    selected_file = File.query.get_or_404(file_id)
+
+    return render_template("cost_analysis.html",
+                           files=None,
+                           cost_data=cost_data,
+                           chart_url=chart_url,
+                           selected_file=selected_file)
 
 
 #########################################################################
