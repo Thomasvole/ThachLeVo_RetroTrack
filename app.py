@@ -1,3 +1,4 @@
+import io
 import json
 import os
 from datetime import datetime, timedelta
@@ -7,10 +8,15 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import pandas as pd
 import requests  # For external API calls
+import xlsxwriter
+from docx import Document
+from docx.shared import Inches
 from flask import Flask, render_template, redirect, url_for, flash, session, request
+from flask import send_file
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
+from fpdf import FPDF
 from werkzeug.utils import secure_filename
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, EqualTo
@@ -306,6 +312,9 @@ def home():
     user = None
     if 'user_id' in session:
         user = User.query.get(session['user_id'])
+        if user:
+            user_files = File.query.filter_by(user_id=user.id).all()
+            session['user_files'] = [{"id": f.id, "filename": f.filename} for f in user_files]
     return render_template('homepage.html', user=user)
 
 
@@ -519,8 +528,6 @@ def delete_file(file_id):
 
 
 # --- Updated Inefficient Routes (List & Detail) Route ---
-@app.route('/inefficient', defaults={'file_id': None}, methods=['GET', 'POST'])
-@app.route('/inefficient/<int:file_id>', methods=['GET', 'POST'])
 def show_inefficient(file_id):
     if 'user_id' not in session:
         flash("Login required.", "danger")
@@ -679,8 +686,6 @@ def generate_cost_waste_chart(cost_data, file_id):
     return f"/static/plots/{plot_filename}"
 
 
-@app.route('/cost_analysis', defaults={'file_id': None})
-@app.route('/cost_analysis/<int:file_id>')
 def cost_analysis(file_id):
     if 'user_id' not in session:
         flash("Login required.", "danger")
@@ -737,6 +742,247 @@ def cost_analysis(file_id):
                            cost_data=cost_data,
                            chart_url=chart_url,
                            selected_file=selected_file)
+
+
+def generate_summary(file_id, user):
+    file = File.query.get_or_404(file_id)
+    routes = InefficientRoute.query.filter_by(file_id=file_id).all()
+    update_cached_routes(routes)
+
+    inefficient_routes = len([
+        r for r in routes
+        if (r.actual_delivery_time - r.expected_delivery_time).total_seconds() / 3600 > 24
+    ])
+
+    total_delayed_hours = sum(
+        (r.actual_delivery_time - r.expected_delivery_time).total_seconds() / 3600 for r in routes
+    )
+    avg_delayed_hours = total_delayed_hours / inefficient_routes if inefficient_routes else 0
+
+    total_time_saved = sum(r.time_saved for r in routes if r.time_saved)
+    avg_time_saved = total_time_saved / inefficient_routes if inefficient_routes else 0
+
+    total_cost_saved = 0
+    cost_table = []
+    for r in routes:
+        try:
+            actual_duration = (r.actual_delivery_time - r.starting_time).total_seconds() / 3600.0
+        except Exception:
+            continue
+        if r.optimized_delivery_time is None:
+            continue
+
+        optimized_time = r.optimized_delivery_time
+        optimized_cost = r.max_delivery_cost * optimized_time
+        actual_cost = r.max_delivery_cost * actual_duration
+        cost_saved = actual_cost - optimized_cost
+        total_cost_saved += cost_saved
+
+        cost_table.append({
+            "route_id": r.id,
+            "base_address": r.base_address,
+            "shipping_address": r.shipping_address,
+            "actual_duration": round(actual_duration, 2),
+            "optimized_time": round(optimized_time, 2),
+            "max_delivery_cost": r.max_delivery_cost,
+            "optimized_cost": round(optimized_cost, 2),
+            "actual_cost": round(actual_cost, 2),
+            "cost_saved": round(cost_saved, 2)
+        })
+
+    avg_cost_saved = total_cost_saved / inefficient_routes if inefficient_routes else 0
+
+    ineff_table = []
+    for r in routes:
+        try:
+            delay = (r.actual_delivery_time - r.expected_delivery_time).total_seconds() / 3600.0
+        except Exception:
+            delay = "N/A"
+        ineff_table.append({
+            "file_id": r.file_id,
+            "base_address": r.base_address,
+            "shipping_address": r.shipping_address,
+            "starting_time": r.starting_time.strftime("%Y-%m-%d %H:%M"),
+            "expected_delivery_time": r.expected_delivery_time.strftime("%Y-%m-%d %H:%M"),
+            "actual_delivery_time": r.actual_delivery_time.strftime("%Y-%m-%d %H:%M"),
+            "expected_delivery_cost": r.expected_delivery_cost,
+            "actual_delivery_cost": r.actual_delivery_cost,
+            "max_delivery_cost": r.max_delivery_cost,
+            "delay_hours": round(delay, 2) if isinstance(delay, (int, float)) else delay,
+            "optimized_delivery_time": r.optimized_delivery_time if r.optimized_delivery_time is not None else "N/A",
+            "time_saved": r.time_saved if r.time_saved is not None else "N/A"
+        })
+
+    chart_url = generate_cost_waste_chart(cost_table, file_id)
+
+    return {
+        "file_name": file.filename,
+        "upload_date": file.upload_date,
+        "user_name": f"{user.first_name} {user.last_name}",
+        "user_email": user.email,
+        "inefficient_routes": inefficient_routes,
+        "total_delayed_hours": round(total_delayed_hours, 2),
+        "avg_delayed_hours": round(avg_delayed_hours, 2),
+        "total_time_saved": round(total_time_saved, 2),
+        "avg_time_saved": round(avg_time_saved, 2),
+        "total_cost_saved": round(total_cost_saved, 2),
+        "avg_cost_saved": round(avg_cost_saved, 2),
+        "ineff_table": ineff_table,
+        "cost_table": cost_table,
+        "chart_url": chart_url
+    }
+
+
+# --- Flask routes for Report Preview and Downloads ---
+
+@app.route('/report/<int:file_id>')
+def report_preview(file_id):
+    if 'user_id' not in session:
+        flash("Login required.", "danger")
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    summary = generate_summary(file_id, user)
+    chart_url = f"/static/plots/cost_waste_{file_id}.png"
+    return render_template("report_preview.html", summary=summary, file_id=file_id, chart_url=chart_url)
+
+
+@app.route('/download_report_pdf/<int:file_id>')
+def download_report_pdf(file_id):
+    if 'user_id' not in session:
+        flash("Login required.", "danger")
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    summary = generate_summary(file_id, user)
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(0, 10, "RetroTrack", ln=True, align='C')
+    pdf.cell(0, 10, "Logistics Inefficiency Report", ln=True, align='C')
+    pdf.ln(10)
+
+    pdf.set_font("Arial", '', 12)
+    for key in ['file_name', 'upload_date', 'user_name', 'user_email',
+                'inefficient_routes', 'total_delayed_hours', 'avg_delayed_hours',
+                'total_time_saved', 'avg_time_saved', 'total_cost_saved', 'avg_cost_saved']:
+        value = summary[key]
+        pdf.cell(0, 8, f"{key.replace('_', ' ').title()}: {value}", ln=True)
+
+    # Table for Inefficient Routes
+    pdf.ln(8)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "Inefficient Routes", ln=True)
+    pdf.set_font("Arial", '', 10)
+    for row in summary["ineff_table"]:
+        pdf.multi_cell(0, 6, json.dumps(row, ensure_ascii=False))
+
+    # Table for Cost Analysis
+    pdf.ln(8)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "Cost Analysis", ln=True)
+    pdf.set_font("Arial", '', 10)
+    for row in summary["cost_table"]:
+        pdf.multi_cell(0, 6, json.dumps(row, ensure_ascii=False))
+
+    # Chart
+    chart_path = f"static/plots/cost_waste_{file_id}.png"
+    if os.path.exists(chart_path):
+        pdf.ln(10)
+        pdf.image(chart_path, x=10, w=180)
+
+    output = io.BytesIO()
+    pdf_output = pdf.output(dest='S').encode('latin-1')
+    output.write(pdf_output)
+    output.seek(0)
+
+    return send_file(output,
+                     mimetype='application/pdf',
+                     as_attachment=True,
+                     download_name=f'report_{file_id}.pdf')
+
+
+@app.route('/download_report_word/<int:file_id>')
+def download_report_word(file_id):
+    user = User.query.get(session['user_id'])
+    summary = generate_summary(file_id, user)
+
+    doc = Document()
+    doc.add_heading("RetroTrack", 0)
+    doc.add_heading("Logistics Inefficiency Report", level=1)
+    doc.add_paragraph(f"Generated by {summary['user_name']} ({summary['user_email']})")
+    doc.add_paragraph("\n")
+
+    for key in ['file_name', 'upload_date', 'inefficient_routes', 'total_delayed_hours',
+                'avg_delayed_hours', 'total_time_saved', 'avg_time_saved',
+                'total_cost_saved', 'avg_cost_saved']:
+        doc.add_paragraph(f"{key.replace('_', ' ').title()}: {summary[key]}")
+
+    doc.add_heading("Inefficient Routes", level=2)
+    for row in summary["ineff_table"]:
+        doc.add_paragraph(json.dumps(row, ensure_ascii=False))
+
+    doc.add_heading("Cost Analysis", level=2)
+    for row in summary["cost_table"]:
+        doc.add_paragraph(json.dumps(row, ensure_ascii=False))
+
+    chart_path = f"static/plots/cost_waste_{file_id}.png"
+    if os.path.exists(chart_path):
+        doc.add_picture(chart_path, width=Inches(6))
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return send_file(buf, mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                     download_name=f"report_{file_id}.docx", as_attachment=True)
+
+
+@app.route('/download_report_excel/<int:file_id>')
+def download_report_excel(file_id):
+    user = User.query.get(session['user_id'])
+    summary = generate_summary(file_id, user)
+
+    buf = io.BytesIO()
+    workbook = xlsxwriter.Workbook(buf)
+    summary_ws = workbook.add_worksheet("Summary")
+    ineff_ws = workbook.add_worksheet("Inefficient Routes")
+    cost_ws = workbook.add_worksheet("Cost Analysis")
+
+    # Write summary
+    row = 0
+    for key in ['file_name', 'upload_date', 'user_name', 'user_email', 'inefficient_routes',
+                'total_delayed_hours', 'avg_delayed_hours', 'total_time_saved',
+                'avg_time_saved', 'total_cost_saved', 'avg_cost_saved']:
+        summary_ws.write(row, 0, key.replace('_', ' ').title())
+        summary_ws.write(row, 1, summary[key])
+        row += 1
+
+    # Write Inefficient Routes Table
+    headers = list(summary['ineff_table'][0].keys()) if summary['ineff_table'] else []
+    for col, h in enumerate(headers):
+        ineff_ws.write(0, col, h)
+    for i, item in enumerate(summary['ineff_table'], 1):
+        for j, h in enumerate(headers):
+            ineff_ws.write(i, j, item[h])
+
+    # Write Cost Table
+    headers = list(summary['cost_table'][0].keys()) if summary['cost_table'] else []
+    for col, h in enumerate(headers):
+        cost_ws.write(0, col, h)
+    for i, item in enumerate(summary['cost_table'], 1):
+        for j, h in enumerate(headers):
+            cost_ws.write(i, j, item[h])
+
+    # Insert chart
+    chart_path = f"static/plots/cost_waste_{file_id}.png"
+    if os.path.exists(chart_path):
+        cost_ws.insert_image('N2', chart_path)
+
+    workbook.close()
+    buf.seek(0)
+    return send_file(buf, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     download_name=f"report_{file_id}.xlsx", as_attachment=True)
 
 
 #########################################################################

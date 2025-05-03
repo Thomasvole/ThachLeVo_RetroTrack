@@ -4,17 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="14fba24f-6ef9-4357-967e-843375c28720" name="Changes" comment="CS IA /RetroTrack/ SC4 (initial draft) 2/12/2025">
-      <change afterPath="$PROJECT_DIR$/templates/cost_analysis.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/e3052646-bed0-426b-b008-10a048d3c45d.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/e3052646-bed0-426b-b008-10a048d3c45d.xml" afterDir="false" />
+    <list default="true" id="14fba24f-6ef9-4357-967e-843375c28720" name="Changes" comment="CS IA /RetroTrack/ SC5 (final draft) 4/27/2025">
+      <change afterPath="$PROJECT_DIR$/templates/report_preview.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/instance/site.db" beforeDir="false" afterPath="$PROJECT_DIR$/instance/site.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/base.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/inefficient.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/inefficient.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/Delivery_Data_test.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/uploads/Delivery_Data_test.xlsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/templates/cost_analysis.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/templates/inefficient.html" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -115,7 +112,7 @@
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
@@ -208,7 +205,15 @@
       <workItem from="1745527104772" duration="211000" />
       <workItem from="1745584168723" duration="7491000" />
       <workItem from="1745601538446" duration="685000" />
-      <workItem from="1745781824248" duration="3230000" />
+      <workItem from="1745781824248" duration="4595000" />
+      <workItem from="1745800324686" duration="8773000" />
+      <workItem from="1745890478325" duration="918000" />
+      <workItem from="1745971491660" duration="1838000" />
+      <workItem from="1745974708524" duration="11492000" />
+      <workItem from="1746058847331" duration="527000" />
+      <workItem from="1746147508564" duration="987000" />
+      <workItem from="1746153208711" duration="2849000" />
+      <workItem from="1746168159727" duration="6608000" />
     </task>
     <task id="LOCAL-00001" summary="CS IA /RetroTrack/ SC1 &amp; 2 (initial draft) 1/12/2025">
       <option name="closed" value="true" />
@@ -298,7 +303,15 @@
       <option name="project" value="LOCAL" />
       <updated>1739370138787</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="CS IA /RetroTrack/ SC5 (final draft) 4/27/2025">
+      <option name="closed" value="true" />
+      <created>1745787398183</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1745787398183</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -328,10 +341,11 @@
     <MESSAGE value="CS IA /RetroTrack/ SC3 (initial draft) 2/11/2025" />
     <MESSAGE value="CS IA /RetroTrack/ SC4 (initial draft) 2/11/2025" />
     <MESSAGE value="CS IA /RetroTrack/ SC4 (initial draft) 2/12/2025" />
-    <option name="LAST_COMMIT_MESSAGE" value="CS IA /RetroTrack/ SC4 (initial draft) 2/12/2025" />
+    <MESSAGE value="CS IA /RetroTrack/ SC5 (final draft) 4/27/2025" />
+    <option name="LAST_COMMIT_MESSAGE" value="CS IA /RetroTrack/ SC5 (final draft) 4/27/2025" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/ThachLeVo_RetroTrack$Flask__app_py_.coverage" NAME="Flask (app.py) Coverage Results" MODIFIED="1745786625910" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/ThachLeVo_RetroTrack$Flask__app_py_.coverage" NAME="Flask (app.py) Coverage Results" MODIFIED="1746169370971" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ThachLeVo_RetroTrack$FlaskProject.coverage" NAME="FlaskProject Coverage Results" MODIFIED="1737553126006" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/FlaskProject$FlaskProject.coverage" NAME="FlaskProject Coverage Results" MODIFIED="1736698897161" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/ThachLeVo_RetroTrack$test.coverage" NAME="test Coverage Results" MODIFIED="1743146679530" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
