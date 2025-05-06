@@ -12,22 +12,27 @@ def parse_excel(file_path):
     ]
     result = {"inefficient_routes": []}
     try:
-        xls = pd.ExcelFile(file_path)
-        for sheet in xls.sheet_names:
-            df = xls.parse(sheet)
-            df.columns = df.columns.str.strip()
-            if not set(required_cols).issubset(df.columns):
-                continue
-            for _, row in df.iterrows():
-                if any(pd.isnull(row[col]) for col in required_cols):
+        # auto-closes the ExcelFile when done
+        with pd.ExcelFile(file_path) as xls:
+            for sheet in xls.sheet_names:
+                df = xls.parse(sheet)
+                df.columns = df.columns.str.strip()
+                if not set(required_cols).issubset(df.columns):
                     continue
-                st = row["Starting Time"]
-                exp_hours = to_float(row["Expected Delivery Time (hours)"])
-                act_hours = to_float(row["Actual Delivery Time (hours)"])
-                if exp_hours is None or act_hours is None:
-                    continue
-                diff = act_hours - exp_hours
-                if diff > 24:
+                for _, row in df.iterrows():
+                    if any(pd.isnull(row[col]) for col in required_cols):
+                        continue
+
+                    st = row["Starting Time"]
+                    exp_hours = to_float(row["Expected Delivery Time (hours)"])
+                    act_hours = to_float(row["Actual Delivery Time (hours)"])
+                    if exp_hours is None or act_hours is None:
+                        continue
+
+                    diff = act_hours - exp_hours
+                    if diff <= 24:
+                        continue
+
                     expected_dt = st + timedelta(hours=exp_hours)
                     actual_dt = st + timedelta(hours=act_hours)
                     ec = to_float(row["Expected Delivery Cost (VND)"])
@@ -35,6 +40,7 @@ def parse_excel(file_path):
                     mc = to_float(row["Max Delivery Cost (VND/hr)"])
                     if None in (ec, ac, mc):
                         continue
+
                     route = {
                         "base_address": str(row["Base Address"]),
                         "shipping_address": str(row["Shipping Address"]),
@@ -47,10 +53,9 @@ def parse_excel(file_path):
                         "delay_hours": diff
                     }
                     result["inefficient_routes"].append(route)
-        return result
     except Exception as e:
         print(f"Error processing Excel file: {e}")
-        return result
+    return result
 
 
 def to_float(value):
