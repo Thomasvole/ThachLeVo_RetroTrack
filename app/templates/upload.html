@@ -15,10 +15,10 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-    
+
 
         <form method="POST" enctype="multipart/form-data" action="{{ form_action }}">
-            <p class="text-muted">Accepted file types: PDF, Word (doc, docx), Excel (xls, xlsx). Maximum file size:
+            <p class="text-muted">Accepted file types: Excel (xls, xlsx). Maximum file size:
                 10MB.</p>
             <div class="mb-3">
                 <input type="file" id="file" name="file" class="form-control" required>

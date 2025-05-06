@@ -93,3 +93,12 @@ def edit_profile():
         flash("Profile updated.", "success")
         return redirect(url_for('profile'))
     return render_template('edit_profile.html', form=form, user=usr)
+
+
+@app.context_processor
+def inject_user_files():
+    if 'user_id' in session:
+        files = File.query.filter_by(user_id=session['user_id']).all()
+    else:
+        files = []
+    return dict(user_files=files)
