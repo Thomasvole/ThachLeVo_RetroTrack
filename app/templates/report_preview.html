@@ -1,13 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
+    <!-- Main container with top margin -->
     <div class="container my-5">
+        <!-- Header section showing report title and user info -->
         <div class="text-center mb-4">
             <h1 class="fw-bold">RetroTrack</h1>
             <h2 class="mt-2">Logistics Inefficiency Report</h2>
+            <!-- Display the name and email of the report owner -->
             <p>Generated for: <strong>{{ summary.user_name }}</strong> ({{ summary.user_email }})</p>
+            <!-- Show the current date -->
             <p><small>Report Date: {{ now.strftime('%Y-%m-%d') }}</small></p>
         </div>
 
+        <!-- Summary metrics card -->
         <div class="card mb-4">
             <div class="card-body">
                 <h4 class="card-title">Summary Metrics</h4>
@@ -31,18 +36,21 @@
             </div>
         </div>
 
+        <!-- Inefficient Routes table, shown only if data exists -->
         {% if summary.ineff_table %}
             <h4 class="mt-5">Inefficient Routes Table</h4>
             <div class="table-responsive">
                 <table class="table table-bordered table-sm">
                     <thead>
                     <tr>
+                        <!-- Dynamically generate column headers -->
                         {% for key in summary.ineff_table[0].keys() %}
                             <th>{{ key.replace('_', ' ').title() }}</th>
                         {% endfor %}
                     </tr>
                     </thead>
                     <tbody>
+                    <!-- Loop through each row of data -->
                     {% for row in summary.ineff_table %}
                         <tr>
                             {% for value in row.values() %}
@@ -55,18 +63,21 @@
             </div>
         {% endif %}
 
+        <!-- Cost Analysis table, shown only if data exists -->
         {% if summary.cost_table %}
             <h4 class="mt-5">Cost Analysis Table</h4>
             <div class="table-responsive">
                 <table class="table table-bordered table-sm">
                     <thead>
                     <tr>
+                        <!-- Dynamically generate column headers -->
                         {% for key in summary.cost_table[0].keys() %}
                             <th>{{ key.replace('_', ' ').title() }}</th>
                         {% endfor %}
                     </tr>
                     </thead>
                     <tbody>
+                    <!-- Loop through each row of data -->
                     {% for row in summary.cost_table %}
                         <tr>
                             {% for value in row.values() %}
@@ -79,6 +90,7 @@
             </div>
         {% endif %}
 
+        <!-- Chart visualization, shown only if a chart URL is provided -->
         {% if chart_url %}
             <h4 class="text-center mt-5">Cost Saved Visualization</h4>
             <div class="text-center my-4">
@@ -86,6 +98,7 @@
             </div>
         {% endif %}
 
+        <!-- Download buttons for PDF, Word, and Excel -->
         <div class="d-flex justify-content-center mt-4">
             <a href="{{ url_for('download_report_pdf', file_id=file_id) }}" class="btn btn-danger mx-2">Download PDF</a>
             <a href="{{ url_for('download_report_word', file_id=file_id) }}" class="btn btn-primary mx-2">Download

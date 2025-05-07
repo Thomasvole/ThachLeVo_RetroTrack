@@ -14,6 +14,7 @@ def inject_now():
 
 @app.route('/')
 def home():
+    """Render homepage and, if logged in, load user info and files."""
     user = None
     if 'user_id' in session:
         user = User.query.get(session['user_id'])
@@ -25,6 +26,7 @@ def home():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """Handle new user registration via a WTForm."""
     form = RegistrationForm()
     if form.validate_on_submit():
         hashed = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
@@ -43,6 +45,7 @@ def register():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """Authenticate existing users and set session variables."""
     form = LoginForm()
     if form.validate_on_submit():
         usr = User.query.filter_by(email=form.email.data).first()
@@ -59,6 +62,7 @@ def login():
 
 @app.route('/logout')
 def logout():
+    """Clear the session and log the user out."""
     session.clear()
     flash("Logged out.", "success")
     return redirect(url_for('home'))
@@ -66,6 +70,7 @@ def logout():
 
 @app.route('/profile')
 def profile():
+    """Display the user's profile; requires login."""
     if 'user_id' not in session:
         flash("Login required.", "danger")
         return redirect(url_for('login'))
@@ -78,6 +83,7 @@ def profile():
 
 @app.route('/edit-profile', methods=['GET', 'POST'])
 def edit_profile():
+    """Allow users to update their first and last name."""
     if 'user_id' not in session:
         flash("Login required.", "danger")
         return redirect(url_for('login'))
@@ -97,6 +103,7 @@ def edit_profile():
 
 @app.context_processor
 def inject_user_files():
+    """Inject the current user's file list into all templates."""
     if 'user_id' in session:
         files = File.query.filter_by(user_id=session['user_id']).all()
     else:

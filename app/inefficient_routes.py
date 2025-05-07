@@ -11,16 +11,19 @@ from .models import File, InefficientRoute
 @app.route('/inefficient', methods=['GET', 'POST'])
 @app.route('/inefficient/<int:file_id>', methods=['GET', 'POST'])
 def show_inefficient(file_id=None):
+    # Ensure user is logged in
     if 'user_id' not in session:
         flash("Login required.", "danger")
         return redirect(url_for('login'))
 
+    # Handle form submission to identify new inefficient routes
     if request.method == 'POST':
         new_routes_count = 0
         user_files = File.query.filter_by(user_id=session['user_id']).all()
         for file in user_files:
             if file.parsed_data:
                 try:
+                    # Load routes from stored JSON
                     data = json.loads(file.parsed_data)
                     for route in data.get("inefficient_routes", []):
                         existing = InefficientRoute.query.filter_by(
@@ -31,6 +34,7 @@ def show_inefficient(file_id=None):
                         if existing:
                             continue
 
+                        # Determine delay if not already provided
                         delay = route.get("delay_hours")
                         if delay is None:
                             ev = to_float(route["expected_delivery_time"])
@@ -40,12 +44,14 @@ def show_inefficient(file_id=None):
                             else:
                                 continue
 
+                        # Only record routes delayed over 24 hours
                         if delay > 24:
                             try:
                                 start_time = datetime.fromisoformat(route["starting_time"])
                             except Exception:
                                 start_time = datetime.strptime(route["starting_time"], "%Y-%m-%d %H:%M:%S")
 
+                            # Compute expected and actual datetimes
                             expected_time = (
                                 start_time + timedelta(hours=route["expected_delivery_time"]) if isinstance(
                                     route["expected_delivery_time"], float)
@@ -55,6 +61,7 @@ def show_inefficient(file_id=None):
                                 route["actual_delivery_time"], float)
                                            else datetime.fromisoformat(route["actual_delivery_time"]))
 
+                            # Create and add new InefficientRoute record
                             new_ir = InefficientRoute(
                                 file_id=file.id,
                                 base_address=route["base_address"],
@@ -71,6 +78,7 @@ def show_inefficient(file_id=None):
                 except Exception as e:
                     print("Error processing file", file.filename, e)
 
+        # Commit all new records at once
         try:
             db.session.commit()
         except Exception as e:
@@ -90,6 +98,7 @@ def show_inefficient(file_id=None):
         files_list = File.query.filter(File.id.in_(file_ids), File.user_id == session['user_id']).all()
         return render_template("inefficient.html", files=files_list, routes=None, selected_file=None)
     else:
+        # Show detailed routes for the selected file
         routes = InefficientRoute.query.filter_by(file_id=file_id).all()
         update_cached_routes(routes)
 

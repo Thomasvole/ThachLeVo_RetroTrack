@@ -24,13 +24,14 @@ from . import app
 from .helpers import generate_summary
 from .models import User
 
-# Register Windows Arial and Arial Bold
+# Register custom fonts for PDF output (Arial and Arial-Bold)
 pdfmetrics.registerFont(TTFont('Arial', r'C:\Windows\Fonts\arial.ttf'))
 pdfmetrics.registerFont(TTFont('Arial-Bold', r'C:\Windows\Fonts\arialbd.ttf'))
 
 
 @app.route('/report/<int:file_id>')
 def report_preview(file_id):
+    """Render an HTML preview of the report before download."""
     if 'user_id' not in session:
         flash("Login required.", "danger")
         return redirect(url_for('login'))
@@ -48,6 +49,7 @@ def report_preview(file_id):
 
 @app.route('/download_report_pdf/<int:file_id>')
 def download_report_pdf(file_id):
+    """Build and send the report as a PDF file."""
     if 'user_id' not in session:
         flash("Login required.", "danger")
         return redirect(url_for('login'))
@@ -55,7 +57,7 @@ def download_report_pdf(file_id):
     user = User.query.get(session['user_id'])
     summary = generate_summary(file_id, user)
 
-    # build PDF in memory
+    # Create an in-memory buffer and SimpleDocTemplate for PDF
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -64,13 +66,14 @@ def download_report_pdf(file_id):
         topMargin=20, bottomMargin=20
     )
 
-    # override default styles to use embedded Arial
+    # Override default styles to use registered Arial fonts
     styles = getSampleStyleSheet()
     styles['Title'].fontName = 'Arial-Bold'
     styles['Heading2'].fontName = 'Arial-Bold'
     styles['Heading5'].fontName = 'Arial-Bold'
     styles['BodyText'].fontName = 'Arial'
 
+    # Define paragraph styles for body and headers
     body_style = ParagraphStyle(
         'body', parent=styles['BodyText'],
         fontName='Arial', fontSize=8, leading=10
@@ -82,6 +85,7 @@ def download_report_pdf(file_id):
     )
 
     elems = []
+    # Title and spacing
     elems.append(Paragraph("RetroTrack Logistics Inefficiency Report", styles['Title']))
     elems.append(Spacer(1, 12))
 
@@ -100,10 +104,12 @@ def download_report_pdf(file_id):
             "Optimized (h)", "Time Saved (h)"
         ]
 
+        # Build table data: header row + one row per route
         data = [[Paragraph(h, header_style) for h in headers]]
         for row in summary['ineff_table']:
             data.append([Paragraph(str(row[k]), body_style) for k in keys])
 
+        # Create and style the table
         col_widths = [120, 120, 60, 60, 60, 40, 40, 40]
         tbl = Table(data, repeatRows=1, colWidths=col_widths)
         tbl.setStyle(TableStyle([
@@ -155,7 +161,7 @@ def download_report_pdf(file_id):
         elems.append(Image(chart_file, width=400, height=200))
         elems.append(Spacer(1, 24))
 
-    # build & send
+    # Build PDF and send as attachment
     doc.build(elems)
     buffer.seek(0)
     return send_file(
@@ -168,17 +174,22 @@ def download_report_pdf(file_id):
 
 @app.route('/download_report_word/<int:file_id>')
 def download_report_word(file_id):
+    """Build and send the report as a Word document."""
+
+    # Ensure the user is logged in
     if 'user_id' not in session:
         flash("Login required.", "danger")
         return redirect(url_for('login'))
 
+    # Fetch current user and generate the summary data
     user = User.query.get(session['user_id'])
     summary = generate_summary(file_id, user)
 
+    # Create a new Word document
     docx = Document()
     docx.add_heading("RetroTrack Logistics Inefficiency Report", 0)
 
-    # Summary as a 2-column table
+    # --- Summary Table (2 columns) ---
     tbl = docx.add_table(rows=1, cols=2)
     hdr = tbl.rows[0].cells
     hdr[0].text = "Metric"
@@ -190,11 +201,13 @@ def download_report_word(file_id):
         'total_cost_saved', 'avg_cost_saved'
     ]:
         row = tbl.add_row().cells
+        # Capitalize and format metric name
         row[0].text = key.replace('_', ' ').title()
+        # Convert the summary value to string
         row[1].text = str(summary[key])
-    docx.add_paragraph()
+    docx.add_paragraph()  # Add spacing after the table
 
-    # Inefficient Routes table
+    # --- Inefficient Routes Table ---
     if summary['ineff_table']:
         keys = [
             "base_address", "shipping_address",
@@ -208,16 +221,19 @@ def download_report_word(file_id):
             "Actual Time", "Delay (h)",
             "Optimized (h)", "Time Saved (h)"
         ]
+
+        # Create table with header row
         t = docx.add_table(rows=1, cols=len(keys))
         for i, h in enumerate(hdrs):
             t.rows[0].cells[i].text = h
+        # Populate rows with data
         for row in summary['ineff_table']:
             r = t.add_row().cells
             for i, k in enumerate(keys):
                 r[i].text = str(row[k])
         docx.add_paragraph()
 
-    # Cost Analysis table
+    # --- Cost Analysis Table ---
     if summary['cost_table']:
         keys = [
             "route_id", "base_address", "shipping_address",
@@ -238,14 +254,16 @@ def download_report_word(file_id):
             for i, k in enumerate(keys):
                 r[i].text = str(row[k])
 
-    # Chart
+    # --- Insert Chart if Available ---
     chart_path = os.path.join(
         app.root_path, 'static', 'plots',
         f"cost_waste_{file_id}.png"
     )
     if os.path.exists(chart_path):
+        # Embed the chart image at 6 inches wide
         docx.add_picture(chart_path, width=Inches(6))
 
+    # Save document to buffer and send as attachment
     buf = io.BytesIO()
     docx.save(buf)
     buf.seek(0)
@@ -259,20 +277,27 @@ def download_report_word(file_id):
 
 @app.route('/download_report_excel/<int:file_id>')
 def download_report_excel(file_id):
+    """
+       Build and send the report as an Excel (.xlsx) workbook.
+    """
     if 'user_id' not in session:
         flash("Login required.", "danger")
         return redirect(url_for('login'))
 
+    # Fetch current user and generate the summary data
     user = User.query.get(session['user_id'])
     summary = generate_summary(file_id, user)
 
+    # Create an in-memory Excel workbook
     buf = io.BytesIO()
     wb = xlsxwriter.Workbook(buf)
+
+    # Add worksheets for summary, inefficient routes, and cost analysis
     summary_ws = wb.add_worksheet("Summary")
     ineff_ws = wb.add_worksheet("Inefficient Routes")
     cost_ws = wb.add_worksheet("Cost Analysis")
 
-    # Summary
+    # --- Write Summary ---
     row = 0
     for key in [
         'file_name', 'upload_date', 'user_name', 'user_email',
@@ -280,11 +305,13 @@ def download_report_excel(file_id):
         'avg_delayed_hours', 'total_time_saved',
         'avg_time_saved', 'total_cost_saved', 'avg_cost_saved'
     ]:
+        # Metric name in first column
         summary_ws.write(row, 0, key.replace('_', ' ').title())
+        # Metric value in second column
         summary_ws.write(row, 1, summary[key])
         row += 1
 
-    # Inefficient Routes
+    # --- Write Inefficient Routes Table ---
     headers = list(summary['ineff_table'][0].keys()) if summary['ineff_table'] else []
     for col, h in enumerate(headers):
         ineff_ws.write(0, col, h)
@@ -292,7 +319,7 @@ def download_report_excel(file_id):
         for j, h in enumerate(headers):
             ineff_ws.write(i, j, item[h])
 
-    # Cost Analysis
+    # --- Write Cost Analysis Table ---
     headers = list(summary['cost_table'][0].keys()) if summary['cost_table'] else []
     for col, h in enumerate(headers):
         cost_ws.write(0, col, h)
@@ -300,14 +327,16 @@ def download_report_excel(file_id):
         for j, h in enumerate(headers):
             cost_ws.write(i, j, item[h])
 
-    # Chart
+    # --- Insert Chart Image if Present ---
     chart_path = os.path.join(
         app.root_path, 'static', 'plots',
         f"cost_waste_{file_id}.png"
     )
     if os.path.exists(chart_path):
+        # Place the chart at cell N2
         cost_ws.insert_image('N2', chart_path)
 
+    # Finalize and close the workbook, then return it as a download
     wb.close()
     buf.seek(0)
     return send_file(

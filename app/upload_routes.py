@@ -11,12 +11,13 @@ from .models import File, InefficientRoute
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
+    """Handle file uploads, enforce size/extension limits, parse and store data."""
     if 'user_id' not in session:
         flash("Login required to upload files.", "danger")
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        # 10 MB max
+        # Client-side size check: reject requests over 10 MB
         if request.content_length and request.content_length > 10 * 1024 * 1024:
             flash("File too large (>10MB).", "danger")
             return redirect(url_for('upload'))
@@ -26,6 +27,7 @@ def upload():
             flash("No file selected.", "danger")
             return redirect(url_for('upload'))
 
+        # Extract and validate file extension
         ext = file.filename.rsplit('.', 1)[-1].lower()
         if ext in app.config['ALLOWED_EXTENSIONS']:
             fname = secure_filename(file.filename)
@@ -33,14 +35,14 @@ def upload():
             file.save(fpath)
             size_kb = os.path.getsize(fpath) / 1024.0
 
-            # enforce 10 MB server‐side too
+            # Server-side size check: re-verify file is under 10 MB
             if size_kb > 10240:
                 os.remove(fpath)
                 flash("File too large (>10MB).", "danger")
                 return redirect(url_for('upload'))
 
             try:
-                # Save metadata
+                # Save file metadata to the database
                 new_file = File(filename=fname, size=size_kb, user_id=session['user_id'])
                 db.session.add(new_file)
                 db.session.commit()
@@ -111,6 +113,7 @@ def upload():
 
 @app.route('/delete-file/<int:file_id>', methods=['POST'])
 def delete_file(file_id):
+    """Remove a file and its associated data if the user is authorized."""
     if 'user_id' not in session:
         flash("Login required.", "danger")
         return redirect(url_for('login'))
@@ -141,6 +144,7 @@ def delete_file(file_id):
 
 @app.route('/files')
 def files():
+    """Show all uploaded files belonging to the logged-in user."""
     if 'user_id' not in session:
         flash("Login required.", "danger")
         return redirect(url_for('login'))
